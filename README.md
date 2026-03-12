@@ -64,19 +64,7 @@ PD0 → UP LED (Green) → 220Ω → GND
 PD1 → DOWN LED (Red) → 220Ω → GND
 PD6 → DOOR OPEN (Yellow) → 220Ω → GND
 PD7 → DOOR CLOSED (Blue) → 220Ω → GND
-2.2 Circuit Design Principles
-Power Distribution
-[5V Source]
-├── ATmega32 VCC pins (10, 30)
-├── 4511 VCC pin (16)
-├── All 10kΩ pull-up resistors
-└── (Indirectly powers LEDs via microcontroller)
-[Ground Network]
-├── ATmega32 GND pins (11, 31)
-├── 4511 GND pin (8)
-├── All button switches
-├── All LED cathodes
-└── 7-segment common cathodes
+
 Input Protection
 ● 10kΩ pull-up resistors on all button inputs prevent floating pins
 ● Active-low configuration (pressed = LOW, not pressed = HIGH) for noise immunity
@@ -128,94 +116,6 @@ PD6 Door Open LED Output Yellow indicator
 PD7 Door Closed LED Output Blue indicator
 ✅ Software Architecture
 
-Elevator State Machine
-typedef enum {
-STATE_IDLE, // Waiting for requests, door closed
-STATE_MOVING_UP, // Ascending between floors
-STATE_MOVING_DOWN, // Descending between floors
-STATE_DOOR_OPENING, // Door opening sequence
-STATE_DOOR_OPEN, // Door fully open
-STATE_DOOR_CLOSING // Door closing sequence
-} ElevatorState_t;
-Movement Direction
-typedef enum {
-DIR_IDLE, // No movement
-DIR_UP, // Moving upward
-DIR_DOWN // Moving downward
-} Direction_t;
-✅ Data Structures
-Request Tracking System
-// Three parallel arrays track different request types
-uint8_t internal_requests[5]; // Floor selections inside elevator
-uint8_t external_up[5]; // UP calls from outside
-uint8_t external_down[5]; // DOWN calls from outside
-// Each array index corresponds to floor number (0-4)
-// Value 1 = request pending, 0 = no request
-System State Variables
-uint8_t current_floor; // Current position (0-4)
-Direction_t current_direction; // Current movement direction
-ElevatorState_t elevator_state; // Current operational state
-uint8_t target_floor; // Destination floor
-uint8_t door_timer_counter; // Door operation timing
-uint8_t travel_timer_counter; // Inter-floor travel timing
-✅ Timing Configuration
-Constant Value Purpose
-TRAVEL_TIME_MS 2000 Time between floors (2 seconds)
-DOOR_OPEN_TIME 3000 Door fully open duration (3 seconds)
-DOOR_CLOSE_TIME 1000 Door opening/closing time (1 second)
-MAIN_LOOP_DELAY 100 Main loop period (100ms)
-✅ Module Organization
-Main Program (elevator_controller.c)
-├── Button Scanning Module
-│ ├── scan_buttons()
-│ ├── any_requests_pending()
-│ └── clear_floor_request()
-│
-├── Display Control Module
-│ ├── update_display()
-│ ├── update_direction_leds()
-│ └── update_door_leds()
-│
-├── Logic Processing Module
-│ ├── find_highest_priority_request()
-│ ├── should_stop_at_floor()
-│ ├── find_next_request_in_direction()
-│ └── check_external_call_at_current_floor()
-│
-├── Movement Control Module
-│ ├── move_to_next_floor()
-│ ├── begin_door_opening()
-│ ├── begin_door_closing()
-│ └── is_door_closed()
-│
-├── State Machine Module
-│ └── elevator_state_machine()
-│
-└── Safety Module
-├── is_safe_to_move()
-└── emergency_stop()
-✅ Core Algorithm Implementation
-
-The elevator implements a four-rule priority system:
-Rule 1: Complete Current Direction First
-if (current_direction == UP) {
-serve_all_UP_requests_before_reversing();
-} else if (current_direction == DOWN) {
-serve_all_DOWN_requests_before_reversing();
-}
-Rule 2: Nearest-First Within Same Direction
-while (requests_exist_in_current_direction()) {
-target = find_nearest_floor_in_current_direction();
-move_to(target);
-}
-Rule 3: First-Come-First-Serve for Different Directions
-first_request = get_oldest_pending_request();
-initial_direction = determine_direction(first_request);
-serve_all_in_direction(initial_direction);
-Rule 4: Immediate Response to External Calls at Current Floor
-if (external_button_pressed_at(current_floor) && door_closed) {
-open_door_immediately();
-}
 ✅ Request Processing Algorithm
 Algorithm: Elevator Scheduling
 Input: Button presses from internal and external interfaces
